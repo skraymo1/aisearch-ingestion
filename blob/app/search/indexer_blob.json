@@ -1,0 +1,30 @@
+{
+  "name": "indexer-blob",
+  "description": "Indexer for Azure Blob Storage content – runs MANUALLY (no schedule)",
+  "dataSourceName": "datasource-blob",
+  "targetIndexName": "documents-index",
+  "skillsetName": "documents-skillset",
+  "schedule": null,
+  "parameters": {
+    "configuration": {
+      "indexedFileNameExtensions": ".ppt,.pptx,.doc,.docx,.pdf,.xls,.xlsx,.json,.txt,.mp3,.wav,.mp4,.avi,.mov,.m4a",
+      "excludedFileNameExtensions": "",
+      "dataToExtract": "contentAndMetadata",
+      "allowSkillsetToReadFileData": true,
+      "parsingMode": "default",
+      "indexStorageMetadataOnlyForOversizedDocuments": true
+    },
+    "maxFailedItems": 10,
+    "maxFailedItemsPerBatch": 5
+  },
+  "fieldMappings": [
+    { "sourceFieldName": "metadata_storage_path", "targetFieldName": "source_url" },
+    { "sourceFieldName": "metadata_storage_content_type", "targetFieldName": "file_type" },
+    { "sourceFieldName": "metadata_storage_last_modified", "targetFieldName": "last_modified" },
+    { "sourceFieldName": "metadata_creation_date", "targetFieldName": "created_date" },
+    { "sourceFieldName": "metadata_storage_name", "targetFieldName": "file_name" },
+    { "sourceFieldName": "metadata_author", "targetFieldName": "author" }
+  ],
+  "outputFieldMappings": [],
+  "_comment": "Set schedule to null for manual-only runs. Use REST API or portal to trigger."
+}

@@ -1,0 +1,4 @@
+azure-functions
+azure-identity
+azure-search-documents>=11.5.0
+# elasticsearch>=8.0.0  # Uncomment when Elasticsearch integration is ready

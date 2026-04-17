@@ -1,0 +1,112 @@
+{
+  "name": "documents-skillset",
+  "description": "Skillset for document enrichment: text chunking, embedding, entity extraction, and key phrases.",
+  "skills": [
+    {
+      "@odata.type": "#Microsoft.Skills.Text.SplitSkill",
+      "name": "text-split",
+      "description": "Split document content into chunks for downstream enrichment",
+      "context": "/document",
+      "textSplitMode": "pages",
+      "maximumPageLength": 2000,
+      "pageOverlapLength": 750,
+      "inputs": [
+        { "name": "text", "source": "/document/content" }
+      ],
+      "outputs": [
+        { "name": "textItems", "targetName": "pages" }
+      ]
+    },
+    {
+      "@odata.type": "#Microsoft.Skills.Text.AzureOpenAIEmbeddingSkill",
+      "name": "embedding-skill",
+      "description": "Generate vector embeddings via AI Foundry (Azure OpenAI)",
+      "context": "/document/pages/*",
+      "resourceUri": "{{AI_SERVICES_ENDPOINT}}",
+      "deploymentId": "text-embedding-3-small",
+      "modelName": "text-embedding-3-small",
+      "inputs": [
+        { "name": "text", "source": "/document/pages/*" }
+      ],
+      "outputs": [
+        { "name": "embedding", "targetName": "content_vector" }
+      ]
+    },
+    {
+      "@odata.type": "#Microsoft.Skills.Text.KeyPhraseExtractionSkill",
+      "name": "key-phrase-extraction",
+      "description": "Extract key phrases for relevancy tuning and faceting",
+      "context": "/document/pages/*",
+      "inputs": [
+        { "name": "text", "source": "/document/pages/*" }
+      ],
+      "outputs": [
+        { "name": "keyPhrases", "targetName": "key_phrases" }
+      ]
+    },
+    {
+      "@odata.type": "#Microsoft.Skills.Text.V3.EntityRecognitionSkill",
+      "name": "entity-recognition",
+      "description": "Extract named entities (people, organizations, locations, etc.)",
+      "context": "/document/pages/*",
+      "categories": ["Person", "Organization", "Location", "DateTime", "URL", "Quantity"],
+      "inputs": [
+        { "name": "text", "source": "/document/pages/*" }
+      ],
+      "outputs": [
+        { "name": "namedEntities", "targetName": "entities_raw" }
+      ]
+    },
+    {
+      "@odata.type": "#Microsoft.Skills.Custom.WebApiSkill",
+      "name": "elastic-sync-skill",
+      "description": "Push enriched chunks to Elasticsearch via Azure Function",
+      "context": "/document/pages/*",
+      "uri": "{{FUNCTION_APP_URL}}/api/elastic/sync?code={{FUNCTION_HOST_KEY}}",
+      "httpMethod": "POST",
+      "httpHeaders": {},
+      "batchSize": 100,
+      "degreeOfParallelism": 2,
+      "timeout": "PT60S",
+      "inputs": [
+        { "name": "content", "source": "/document/pages/*" },
+        { "name": "content_vector", "source": "/document/pages/*/content_vector" },
+        { "name": "key_phrases", "source": "/document/pages/*/key_phrases" },
+        { "name": "title", "source": "/document/metadata_storage_name" },
+        { "name": "source_url", "source": "/document/metadata_storage_path" },
+        { "name": "file_type", "source": "/document/metadata_storage_content_type" },
+        { "name": "last_modified", "source": "/document/metadata_storage_last_modified" }
+      ],
+      "outputs": [
+        { "name": "status", "targetName": "sync_status" }
+      ]
+    }
+  ],
+  "cognitiveServices": {
+    "@odata.type": "#Microsoft.Azure.Search.AIServicesByIdentity",
+    "subdomainUrl": "{{AI_SERVICES_ENDPOINT}}"
+  },
+  "indexProjections": {
+    "selectors": [
+      {
+        "targetIndexName": "documents-index",
+        "parentKeyFieldName": "parent_id",
+        "sourceContext": "/document/pages/*",
+        "mappings": [
+          { "name": "content", "source": "/document/pages/*" },
+          { "name": "content_vector", "source": "/document/pages/*/content_vector" },
+          { "name": "key_phrases", "source": "/document/pages/*/key_phrases" },
+          { "name": "title", "source": "/document/metadata_storage_name" },
+          { "name": "layout_type", "source": "/document/metadata_storage_content_type" },
+          { "name": "file_name", "source": "/document/metadata_storage_name" },
+          { "name": "source_url", "source": "/document/metadata_storage_path" },
+          { "name": "last_modified", "source": "/document/metadata_storage_last_modified" },
+          { "name": "file_type", "source": "/document/metadata_storage_content_type" }
+        ]
+      }
+    ],
+    "parameters": {
+      "projectionMode": "skipIndexingParentDocuments"
+    }
+  }
+}
