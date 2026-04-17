@@ -1,0 +1,174 @@
+{
+  "name": "documents-skillset",
+  "description": "Skillset for document enrichment: Content Understanding extraction with chunking, embedding, entity extraction, and key phrases.",
+  "skills": [
+    {
+      "@odata.type": "#Microsoft.Skills.Util.ContentUnderstandingSkill",
+      "name": "content-understanding",
+      "description": "Extract and chunk documents using Content Understanding with image and location metadata extraction",
+      "context": "/document",
+      "extractionOptions": ["images", "locationMetadata"],
+      "chunkingProperties": {
+        "unit": "characters",
+        "maximumLength": 2000,
+        "overlapLength": 750
+      },
+      "inputs": [
+        { "name": "file_data", "source": "/document/file_data" }
+      ],
+      "outputs": [
+        { "name": "text_sections", "targetName": "text_sections" },
+        { "name": "normalized_images", "targetName": "normalized_images" }
+      ]
+    },
+    {
+      "@odata.type": "#Microsoft.Skills.Util.ConditionalSkill",
+      "name": "normalize-file-name",
+      "description": "Normalize file name across blob and SharePoint data sources",
+      "context": "/document",
+      "inputs": [
+        { "name": "condition", "source": "= $(/document/metadata_storage_name) != null" },
+        { "name": "whenTrue", "source": "/document/metadata_storage_name" },
+        { "name": "whenFalse", "source": "/document/metadata_spo_item_name" }
+      ],
+      "outputs": [
+        { "name": "output", "targetName": "normalized_file_name" }
+      ]
+    },
+    {
+      "@odata.type": "#Microsoft.Skills.Util.ConditionalSkill",
+      "name": "normalize-source-url",
+      "description": "Normalize source URL across blob and SharePoint data sources",
+      "context": "/document",
+      "inputs": [
+        { "name": "condition", "source": "= $(/document/metadata_storage_path) != null" },
+        { "name": "whenTrue", "source": "/document/metadata_storage_path" },
+        { "name": "whenFalse", "source": "/document/metadata_spo_item_weburi" }
+      ],
+      "outputs": [
+        { "name": "output", "targetName": "normalized_source_url" }
+      ]
+    },
+    {
+      "@odata.type": "#Microsoft.Skills.Util.ConditionalSkill",
+      "name": "normalize-file-type",
+      "description": "Normalize content type across blob and SharePoint data sources",
+      "context": "/document",
+      "inputs": [
+        { "name": "condition", "source": "= $(/document/metadata_storage_content_type) != null" },
+        { "name": "whenTrue", "source": "/document/metadata_storage_content_type" },
+        { "name": "whenFalse", "source": "/document/metadata_spo_item_content_type" }
+      ],
+      "outputs": [
+        { "name": "output", "targetName": "normalized_file_type" }
+      ]
+    },
+    {
+      "@odata.type": "#Microsoft.Skills.Util.ConditionalSkill",
+      "name": "normalize-last-modified",
+      "description": "Normalize last modified date across blob and SharePoint data sources",
+      "context": "/document",
+      "inputs": [
+        { "name": "condition", "source": "= $(/document/metadata_storage_last_modified) != null" },
+        { "name": "whenTrue", "source": "/document/metadata_storage_last_modified" },
+        { "name": "whenFalse", "source": "/document/metadata_spo_item_last_modified" }
+      ],
+      "outputs": [
+        { "name": "output", "targetName": "normalized_last_modified" }
+      ]
+    },
+    {
+      "@odata.type": "#Microsoft.Skills.Text.AzureOpenAIEmbeddingSkill",
+      "name": "embedding-skill",
+      "description": "Generate vector embeddings via AI Foundry (Azure OpenAI)",
+      "context": "/document/text_sections/*",
+      "resourceUri": "{{AI_SERVICES_ENDPOINT}}",
+      "deploymentId": "text-embedding-3-small",
+      "modelName": "text-embedding-3-small",
+      "inputs": [
+        { "name": "text", "source": "/document/text_sections/*/content" }
+      ],
+      "outputs": [
+        { "name": "embedding", "targetName": "content_vector" }
+      ]
+    },
+    {
+      "@odata.type": "#Microsoft.Skills.Text.KeyPhraseExtractionSkill",
+      "name": "key-phrase-extraction",
+      "description": "Extract key phrases for relevancy tuning and faceting",
+      "context": "/document/text_sections/*",
+      "inputs": [
+        { "name": "text", "source": "/document/text_sections/*/content" }
+      ],
+      "outputs": [
+        { "name": "keyPhrases", "targetName": "key_phrases" }
+      ]
+    },
+    {
+      "@odata.type": "#Microsoft.Skills.Text.V3.EntityRecognitionSkill",
+      "name": "entity-recognition",
+      "description": "Extract named entities (people, organizations, locations, etc.)",
+      "context": "/document/text_sections/*",
+      "categories": ["Person", "Organization", "Location", "DateTime", "URL", "Quantity"],
+      "inputs": [
+        { "name": "text", "source": "/document/text_sections/*/content" }
+      ],
+      "outputs": [
+        { "name": "namedEntities", "targetName": "entities_raw" }
+      ]
+    },
+    {
+      "@odata.type": "#Microsoft.Skills.Custom.WebApiSkill",
+      "name": "elastic-sync-skill",
+      "description": "Push enriched chunks to Elasticsearch via Azure Function",
+      "context": "/document/text_sections/*",
+      "uri": "{{FUNCTION_APP_URL}}/api/elastic/sync?code={{FUNCTION_HOST_KEY}}",
+      "httpMethod": "POST",
+      "httpHeaders": {},
+      "batchSize": 100,
+      "degreeOfParallelism": 2,
+      "timeout": "PT60S",
+      "inputs": [
+        { "name": "content", "source": "/document/text_sections/*/content" },
+        { "name": "content_vector", "source": "/document/text_sections/*/content_vector" },
+        { "name": "key_phrases", "source": "/document/text_sections/*/key_phrases" },
+        { "name": "title", "source": "/document/normalized_file_name" },
+        { "name": "source_url", "source": "/document/normalized_source_url" },
+        { "name": "file_type", "source": "/document/normalized_file_type" },
+        { "name": "last_modified", "source": "/document/normalized_last_modified" }
+      ],
+      "outputs": [
+        { "name": "status", "targetName": "sync_status" }
+      ]
+    }
+  ],
+  "cognitiveServices": {
+    "@odata.type": "#Microsoft.Azure.Search.AIServicesByIdentity",
+    "subdomainUrl": "{{AI_SERVICES_ENDPOINT}}"
+  },
+  "indexProjections": {
+    "selectors": [
+      {
+        "targetIndexName": "documents-index",
+        "parentKeyFieldName": "parent_id",
+        "sourceContext": "/document/text_sections/*",
+        "mappings": [
+          { "name": "content", "source": "/document/text_sections/*/content" },
+          { "name": "content_vector", "source": "/document/text_sections/*/content_vector" },
+          { "name": "key_phrases", "source": "/document/text_sections/*/key_phrases" },
+          { "name": "title", "source": "/document/normalized_file_name" },
+          { "name": "page_number", "source": "/document/text_sections/*/locationMetadata/pageNumberFrom" },
+          { "name": "layout_type", "source": "/document/normalized_file_type" },
+          { "name": "file_name", "source": "/document/normalized_file_name" },
+          { "name": "source_url", "source": "/document/normalized_source_url" },
+          { "name": "last_modified", "source": "/document/normalized_last_modified" },
+          { "name": "file_type", "source": "/document/normalized_file_type" },
+          { "name": "metadata_spo_item_path", "source": "/document/metadata_spo_item_path" }
+        ]
+      }
+    ],
+    "parameters": {
+      "projectionMode": "skipIndexingParentDocuments"
+    }
+  }
+}

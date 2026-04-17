@@ -1,0 +1,31 @@
+{
+  "name": "indexer-sharepoint",
+  "description": "Indexer for SharePoint content – runs MANUALLY (no schedule)",
+  "dataSourceName": "datasource-sharepoint",
+  "targetIndexName": "documents-index",
+  "skillsetName": "documents-skillset",
+  "schedule": null,
+  "parameters": {
+    "configuration": {
+      "indexedFileNameExtensions": ".ppt,.pptx,.doc,.docx,.pdf,.xls,.xlsx,.json,.txt,.mp3,.wav,.mp4,.avi,.mov,.m4a",
+      "excludedFileNameExtensions": "",
+      "dataToExtract": "contentAndMetadata",
+      "allowSkillsetToReadFileData": true,
+      "parsingMode": "default",
+      "indexStorageMetadataOnlyForOversizedDocuments": true
+    },
+    "maxFailedItems": 10,
+    "maxFailedItemsPerBatch": 5
+  },
+  "fieldMappings": [
+    { "sourceFieldName": "metadata_spo_item_weburi", "targetFieldName": "source_url" },
+    { "sourceFieldName": "metadata_spo_item_content_type", "targetFieldName": "file_type" },
+    { "sourceFieldName": "metadata_spo_item_last_modified", "targetFieldName": "last_modified" },
+    { "sourceFieldName": "metadata_spo_item_created", "targetFieldName": "created_date" },
+    { "sourceFieldName": "metadata_spo_item_name", "targetFieldName": "file_name" },
+    { "sourceFieldName": "metadata_spo_item_author", "targetFieldName": "author" },
+    { "sourceFieldName": "metadata_spo_item_weburi", "targetFieldName": "content_preview_url" },
+    { "sourceFieldName": "metadata_spo_item_path", "targetFieldName": "metadata_spo_item_path" }
+  ],
+  "outputFieldMappings": []
+}

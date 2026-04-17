@@ -1,0 +1,18 @@
+{
+  "name": "datasource-sharepoint",
+  "description": "SharePoint Online data source using application permissions (Files.Read.All + Sites.Read.All)",
+  "type": "sharepoint",
+  "credentials": {
+    "connectionString": "SharePointOnlineEndpoint={{SHAREPOINT_SITE_URL}};ApplicationId={{SHAREPOINT_CLIENT_ID}};ApplicationSecret={{SHAREPOINT_CLIENT_SECRET}};TenantId={{SHAREPOINT_TENANT_ID}}"
+  },
+  "container": {
+    "name": "defaultSiteLibrary",
+    "query": null
+  },
+  "_comment": [
+    "Uses APPLICATION permissions (client credentials) – the indexer runs as the application service principal.",
+    "The app registration must have Application permissions: Files.Read.All + Sites.Read.All on Microsoft Graph.",
+    "Tenant admin consent is required for these permissions.",
+    "Replace placeholder values ({{...}}) before deployment or use deploy_search.py"
+  ]
+}

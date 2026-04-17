@@ -1,0 +1,52 @@
+# =============================================================================
+# Terraform Variables — Example Configuration
+# =============================================================================
+# Copy this file to terraform.tfvars and fill in your values:
+#   cp terraform.tfvars.example terraform.tfvars
+#
+# Do NOT commit terraform.tfvars — it may contain sensitive values.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# General
+# -----------------------------------------------------------------------------
+project_name        = "my-prototype"
+environment         = "dev"
+location            = "eastus2"
+
+subscription_id     = "<your-azure-subscription-id>"
+resource_group_name = "rg-prototype"
+
+# -----------------------------------------------------------------------------
+# AI Search
+# -----------------------------------------------------------------------------
+ai_search_sku      = "standard"        # free | basic | standard | standard2 | standard3
+search_index_name  = "documents-index"
+
+# -----------------------------------------------------------------------------
+# SharePoint
+# -----------------------------------------------------------------------------
+# The SharePoint site to ingest documents from.
+# App registration is managed by Terraform (infra/sharepoint-entra.tf).
+# Permissions (Files.Read.All + Sites.Read.All) and admin consent are auto-provisioned.
+sharepoint_site_url = "https://<your-tenant>.sharepoint.com/sites/<YourSite>"
+
+# -----------------------------------------------------------------------------
+# Elasticsearch (Phase 2 — leave empty until ready)
+# -----------------------------------------------------------------------------
+elasticsearch_endpoint   = ""
+elasticsearch_api_key    = ""
+elasticsearch_index_name = "documents"
+
+# -----------------------------------------------------------------------------
+# Embedding Model (deployed via AI Foundry / AI Services)
+# -----------------------------------------------------------------------------
+embedding_model_name     = "text-embedding-3-small"
+embedding_model_version  = "1"
+embedding_model_capacity = 10   # TPM capacity in thousands
+
+# -----------------------------------------------------------------------------
+# AI Foundry Project (optional)
+# -----------------------------------------------------------------------------
+# foundry_project_name = ""          # Defaults to ai-project-{project_name}-{environment}
+# enable_hosted_agents = false

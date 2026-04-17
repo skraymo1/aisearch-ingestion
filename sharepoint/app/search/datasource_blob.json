@@ -1,0 +1,26 @@
+{
+  "name": "datasource-blob",
+  "description": "Azure Blob Storage data source for document ingestion (Managed Identity auth)",
+  "type": "azureblob",
+  "credentials": {
+    "connectionString": "ResourceId=/subscriptions/{{SUBSCRIPTION_ID}}/resourceGroups/{{RESOURCE_GROUP}}/providers/Microsoft.Storage/storageAccounts/{{STORAGE_ACCOUNT_NAME}};"
+  },
+  "container": {
+    "name": "documents",
+    "query": null
+  },
+  "dataChangeDetectionPolicy": {
+    "@odata.type": "#Microsoft.Azure.Search.HighWaterMarkChangeDetectionPolicy",
+    "highWaterMarkColumnName": "metadata_storage_last_modified"
+  },
+  "dataDeletionDetectionPolicy": {
+    "@odata.type": "#Microsoft.Azure.Search.SoftDeleteColumnDeletionDetectionPolicy",
+    "softDeleteColumnName": "IsDeleted",
+    "softDeleteMarkerValue": "true"
+  },
+  "_comment": [
+    "Uses Managed Identity (no access key) – AI Search system-assigned MI must have Storage Blob Data Reader",
+    "Supports: ppt, pptx, doc, docx, pdf, xls, xlsx, json, txt, audio/video files",
+    "Replace placeholder values ({{...}}) before deployment or use deploy_search.py"
+  ]
+}
