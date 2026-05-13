@@ -275,3 +275,4 @@ Thumbs.db
 *.swo
 *~
 data
+.python_packages
