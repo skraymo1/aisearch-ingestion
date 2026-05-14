@@ -8,7 +8,7 @@ resource "azurerm_storage_account" "main" {
   account_tier                  = "Standard"
   account_replication_type      = "LRS"
   min_tls_version               = "TLS1_2"
-  shared_access_key_enabled     = false
+  shared_access_key_enabled     = true
   default_to_oauth_authentication = true
   allow_nested_items_to_be_public = false
 
@@ -29,6 +29,13 @@ resource "azurerm_storage_container" "documents" {
 # Container for skillset knowledge-store projections
 resource "azurerm_storage_container" "knowledge_store" {
   name                  = "knowledge-store"
+  storage_account_id    = azurerm_storage_account.main.id
+  container_access_type = "private"
+}
+
+# Container that holds the Flex Consumption deployment package
+resource "azurerm_storage_container" "function_releases" {
+  name                  = "function-releases"
   storage_account_id    = azurerm_storage_account.main.id
   container_access_type = "private"
 }

@@ -24,7 +24,7 @@ resource "terraform_data" "deploy_search_resources" {
     azurerm_cognitive_deployment.embedding,
     azurerm_storage_account.main,
     azurerm_storage_container.documents,
-    azurerm_linux_function_app.elastic_sync,
+    azurerm_function_app_flex_consumption.elastic_sync,
     azurerm_key_vault_secret.sharepoint_client_id,
     azurerm_key_vault_secret.sharepoint_client_secret,
     terraform_data.deploy_function_code,
@@ -44,7 +44,18 @@ resource "terraform_data" "deploy_search_resources" {
   provisioner "local-exec" {
     working_dir = "${path.module}/../app/search"
     interpreter = ["pwsh", "-Command"]
-    command     = "$funcKey = (az functionapp function keys list --name '${azurerm_linux_function_app.elastic_sync.name}' --resource-group '${azurerm_resource_group.main.name}' --function-name 'ElasticSync' --query 'default' -o tsv); py deploy_search.py --search-endpoint 'https://${azurerm_search_service.main.name}.search.windows.net' --function-app-url 'https://${azurerm_linux_function_app.elastic_sync.default_hostname}' --function-host-key $funcKey --ai-services-endpoint '${azurerm_cognitive_account.ai_services.endpoint}' --subscription-id '${data.azurerm_client_config.current.subscription_id}' --resource-group '${azurerm_resource_group.main.name}' --storage-account-name '${azurerm_storage_account.main.name}'"
+    command     = <<-CMD
+      # Retry key retrieval until function host is available
+      for ($i = 1; $i -le 12; $i++) {
+        $funcKey = az rest --method post --url '/subscriptions/${data.azurerm_client_config.current.subscription_id}/resourceGroups/${azurerm_resource_group.main.name}/providers/Microsoft.Web/sites/${azurerm_function_app_flex_consumption.elastic_sync.name}/host/default/listkeys?api-version=2023-12-01' --query 'functionKeys.default' -o tsv 2>$null
+        if ($LASTEXITCODE -eq 0 -and $funcKey) { break }
+        Write-Host "Function host not ready (attempt $i/12). Waiting 15s..."
+        Start-Sleep -Seconds 15
+      }
+      if (-not $funcKey) { Write-Host "ERROR: Could not retrieve function key."; exit 1 }
+      py deploy_search.py --search-endpoint 'https://${azurerm_search_service.main.name}.search.windows.net' --function-app-url 'https://${azurerm_function_app_flex_consumption.elastic_sync.default_hostname}' --function-host-key $funcKey --ai-services-endpoint '${azurerm_cognitive_account.ai_services.endpoint}' --subscription-id '${data.azurerm_client_config.current.subscription_id}' --resource-group '${azurerm_resource_group.main.name}' --storage-account-name '${azurerm_storage_account.main.name}'
+      if ($LASTEXITCODE -ne 0) { exit 1 }
+    CMD
   }
 }
 
@@ -78,6 +89,17 @@ resource "terraform_data" "deploy_sharepoint_indexer" {
   provisioner "local-exec" {
     working_dir = "${path.module}/../app/search"
     interpreter = ["pwsh", "-Command"]
-    command     = "$funcKey = (az functionapp function keys list --name '${azurerm_linux_function_app.elastic_sync.name}' --resource-group '${azurerm_resource_group.main.name}' --function-name 'ElasticSync' --query 'default' -o tsv); py deploy_search.py --search-endpoint 'https://${azurerm_search_service.main.name}.search.windows.net' --function-app-url 'https://${azurerm_linux_function_app.elastic_sync.default_hostname}' --function-host-key $funcKey --ai-services-endpoint '${azurerm_cognitive_account.ai_services.endpoint}' --only index skillset datasources indexers --sharepoint-site-url '${var.sharepoint_site_url}' --sharepoint-tenant-id '${data.azurerm_client_config.current.tenant_id}' --sharepoint-client-id '${azuread_application.sharepoint_connector.client_id}' --sharepoint-client-secret '${azuread_application_password.sharepoint_connector.value}' --subscription-id '${data.azurerm_client_config.current.subscription_id}' --resource-group '${azurerm_resource_group.main.name}' --storage-account-name '${azurerm_storage_account.main.name}'"
+    command     = <<-CMD
+      # Retry key retrieval until function host is available
+      for ($i = 1; $i -le 12; $i++) {
+        $funcKey = az rest --method post --url '/subscriptions/${data.azurerm_client_config.current.subscription_id}/resourceGroups/${azurerm_resource_group.main.name}/providers/Microsoft.Web/sites/${azurerm_function_app_flex_consumption.elastic_sync.name}/host/default/listkeys?api-version=2023-12-01' --query 'functionKeys.default' -o tsv 2>$null
+        if ($LASTEXITCODE -eq 0 -and $funcKey) { break }
+        Write-Host "Function host not ready (attempt $i/12). Waiting 15s..."
+        Start-Sleep -Seconds 15
+      }
+      if (-not $funcKey) { Write-Host "ERROR: Could not retrieve function key."; exit 1 }
+      py deploy_search.py --search-endpoint 'https://${azurerm_search_service.main.name}.search.windows.net' --function-app-url 'https://${azurerm_function_app_flex_consumption.elastic_sync.default_hostname}' --function-host-key $funcKey --ai-services-endpoint '${azurerm_cognitive_account.ai_services.endpoint}' --only index skillset datasources indexers --sharepoint-site-url '${var.sharepoint_site_url}' --sharepoint-tenant-id '${data.azurerm_client_config.current.tenant_id}' --sharepoint-client-id '${azuread_application.sharepoint_connector.client_id}' --sharepoint-client-secret '${azuread_application_password.sharepoint_connector.value}' --subscription-id '${data.azurerm_client_config.current.subscription_id}' --resource-group '${azurerm_resource_group.main.name}' --storage-account-name '${azurerm_storage_account.main.name}'
+      if ($LASTEXITCODE -ne 0) { exit 1 }
+    CMD
   }
 }

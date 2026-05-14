@@ -27,15 +27,15 @@ output "key_vault_uri" {
 }
 
 output "function_app_name" {
-  value = azurerm_linux_function_app.elastic_sync.name
+  value = azurerm_function_app_flex_consumption.elastic_sync.name
 }
 
 output "function_app_url" {
-  value = "https://${azurerm_linux_function_app.elastic_sync.default_hostname}"
+  value = "https://${azurerm_function_app_flex_consumption.elastic_sync.default_hostname}"
 }
 
 output "function_app_custom_skill_url" {
-  value = "https://${azurerm_linux_function_app.elastic_sync.default_hostname}/api/skills"
+  value = "https://${azurerm_function_app_flex_consumption.elastic_sync.default_hostname}/api/skills"
 }
 
 output "log_analytics_workspace_id" {
